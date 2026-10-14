@@ -51,6 +51,13 @@
                 </template>
               </Popover>
               <div class="text-ink-gray-9">{{ column.column.name }}</div>
+              <span
+                v-if="column.column.all_count != null"
+                data-kanban-count
+                class="ml-2 text-sm text-ink-gray-5 tabular-nums"
+              >
+                {{ column.column.all_count }}
+              </span>
             </div>
             <div class="flex">
               <Dropdown :options="actions(column)">
@@ -269,9 +276,16 @@ function updateColumn(d, fetchNewColumns = false) {
   let data = { kanban_columns: _columns, fetchNewColumns }
 
   if (toColumn != fromColumn) {
+    shiftCount(fromColumn, -1)
+    shiftCount(toColumn, 1)
     data = { item: itemName, to: toColumn, kanban_columns: _columns }
   }
 
   emit('update', data)
+}
+
+function shiftCount(name, delta) {
+  const col = columns.value.find((c) => c.column.name == name)
+  if (col && col.column.all_count != null) col.column.all_count += delta
 }
 </script>
