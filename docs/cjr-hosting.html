@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRM Hosting Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f1f4f2;
+  --card: #ffffff;
+  --ink: #17221d;
+  --muted: #55645c;
+  --line: #d5ddd8;
+  --pine: #1d6a58;
+  --pine-soft: #dcece6;
+  --violet: #5b4a9e;
+  --code-bg: #e9eeeb;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111814;
+    --card: #18211c;
+    --ink: #e3ebe6;
+    --muted: #9aaba1;
+    --line: #2b3831;
+    --pine: #5cc0a3;
+    --pine-soft: #1e3a31;
+    --violet: #a99bea;
+    --code-bg: #212c26;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111814;
+  --card: #18211c;
+  --ink: #e3ebe6;
+  --muted: #9aaba1;
+  --line: #2b3831;
+  --pine: #5cc0a3;
+  --pine-soft: #1e3a31;
+  --violet: #a99bea;
+  --code-bg: #212c26;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.6 "IBM Plex Sans", system-ui, sans-serif;
+}
+main { max-width: 820px; margin: 0 auto; padding: 40px 16px 64px; }
+h1, h2 { font-family: "Space Grotesk", system-ui, sans-serif; line-height: 1.2; }
+h1 { font-size: 2rem; margin: 0 0 6px; }
+h2 {
+  font-size: 1.15rem;
+  margin: 36px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--pine);
+  display: inline-block;
+}
+.lede { color: var(--muted); margin: 0 0 8px; }
+.stamp { font: 500 0.8rem "IBM Plex Mono", monospace; color: var(--violet); }
+code, pre { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.88em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre {
+  background: var(--code-bg);
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+pre code { background: none; padding: 0; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: "Space Grotesk", sans-serif; font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: none; }
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+.flow span {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.9rem;
+}
+.flow b { color: var(--pine); font-weight: 600; }
+.flow i { color: var(--muted); font-style: normal; }
+ol, ul { padding-left: 22px; }
+li { margin: 4px 0; }
+.note {
+  background: var(--pine-soft);
+  border-left: 3px solid var(--pine);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  margin: 12px 0;
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Frappe CRM hosting</h1>
+  <p class="lede">How our three self-hosted Frappe CRM sites are built, upgraded and backed up. This repo is the CRM fork they run.</p>
+  <p class="stamp">Last updated 2026-10-29</p>
+
+  <h2>The sites</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Site</th><th>Role</th><th>Downtime per upgrade</th></tr>
+    <tr><td><code>crm.codingpro.online</code></td><td>Builds every image and pushes it to ECR</td><td>~15 min</td></tr>
+    <tr><td><code>crm.planto.ai</code></td><td>Pulls the image from ECR</td><td>~2–3 min</td></tr>
+    <tr><td><code>crm.merakidesign.online</code></td><td>Pulls the image from ECR</td><td>~2–3 min</td></tr>
+  </table>
+  </div>
+  <p>Each site is one EC2 box (t3.large, x86) running the frappe_docker stack with MariaDB on the same box. The boxes, their IAM roles and the Cloudflare DNS records live in Terraform (prod environment).</p>
+
+  <h2>One image, built once</h2>
+  <div class="flow">
+    <span><b>apps.json</b> on the codingpro box</span><i>→</i>
+    <span><code>crm-upgrade.sh</code> builds</span><i>→</i>
+    <span>ECR <code>frappe-crm:&lt;crm&gt;-&lt;YYYYMMDDHHMM&gt;</code></span><i>→</i>
+    <span>every site runs the same tag</span>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <tr><th>App</th><th>Source</th><th>Pinned to</th></tr>
+    <tr><td><code>frappe</code></td><td>frappe/frappe</td><td><code>version-15</code></td></tr>
+    <tr><td><code>crm</code></td><td>this fork</td><td>tag <code>v1.84.0-cjr</code>: CRM 1.84.0 plus stage counts on the Kanban columns</td></tr>
+    <tr><td><code>crm_addons</code></td><td>sidrajputt/frappe-crm-pro-pack</td><td>a release tag (now <code>v1.5.1</code>)</td></tr>
+    <tr><td><code>frappe_whatsapp</code></td><td>shridarpatil/frappe_whatsapp</td><td><code>version-15</code></td></tr>
+    <tr><td><code>frappe_appointment</code></td><td>rtCamp/frappe-appointment</td><td><code>main</code></td></tr>
+  </table>
+  </div>
+  <p>Branch pins pull whatever is newest on that branch at build time, so Frappe usually moves up a v15 patch release on each rebuild.</p>
+
+  <h2>Upgrading Pro Pack</h2>
+  <ol>
+    <li>Read the release diff first: new patches, removed or retyped fields, and what the <code>after_migrate</code> hooks write.</li>
+    <li>On the codingpro box, copy <code>apps.json</code> to <code>apps.json.pre-&lt;version&gt;</code>, set the <code>crm_addons</code> branch to the new tag, then run:
+      <pre><code>./crm-upgrade.sh v1.84.0</code></pre>
+      It takes a full backup with files to S3, stops the stack, builds (~15 min), checks every app and the Kanban patch are in the image, pushes to ECR, switches over and migrates.</li>
+    <li>On each other site, back up first, because a redeploy does not:
+      <pre><code>docker exec crm_prod-backend-1 bench --site &lt;site&gt; backup --with-files
+sudo /usr/local/bin/frappe-backup-sync.sh
+./crm-upgrade.sh --redeploy &lt;new tag&gt;</code></pre></li>
+    <li>Check each site: <code>bench list-apps</code>, the lead count, new rows in Error Log, and <code>/api/method/ping</code>.</li>
+  </ol>
+
+  <h2>Rolling back</h2>
+  <pre><code>./crm-upgrade.sh --redeploy &lt;previous tag&gt;</code></pre>
+  <p>Migrate only goes forward. If the release added tables or fields, also restore that site's pre-upgrade backup.</p>
+
+  <h2>Changing the CRM itself</h2>
+  <p>Our change lives on branch <code>cjr/v1.84.0</code>. For a new CRM release, rebase the patch onto the upstream tag, tag it <code>v&lt;version&gt;-cjr</code>, push, then run <code>./crm-upgrade.sh v&lt;version&gt;</code>. The script refuses to build if the <code>-cjr</code> tag is missing.</p>
+
+  <h2>Backups</h2>
+  <ul>
+    <li>The stack's cron container runs <code>bench backup</code> every hour (database and site config, no attachments).</li>
+    <li>A systemd timer on each box syncs them to the backup S3 bucket at :10 every hour, under a per-site prefix, and keeps two days locally.</li>
+    <li>Every upgrade takes a full backup with files first.</li>
+  </ul>
+
+  <h2>Adding a site</h2>
+  <ol>
+    <li>Terraform: a new module that reuses the existing CRM product module. It creates the instance, an IAM role limited to ECR pull and its own backup prefix, and a DNS-only Cloudflare A record.</li>
+    <li>On the box: Docker, 2 GB swap, AWS CLI, then pull the current tag from ECR.</li>
+    <li><code>easy-install.py deploy</code> with the four apps and an hourly backup schedule.</li>
+    <li>Turn the scheduler on, generate the encryption key, restart the Python workers, add the backup timer, copy <code>crm-upgrade.sh</code> with the new <code>SITE</code>, and rotate the passwords.</li>
+  </ol>
+
+  <h2>Things that have bitten us</h2>
+  <ul>
+    <li><b>x86 only.</b> The published Frappe images are amd64, so Graviton (t4g) fails with <code>exec format error</code>.</li>
+    <li><b>Server scripts</b> need <code>server_script_enabled</code> in the global <code>common_site_config.json</code>. The per-site setting is ignored.</li>
+    <li><b>A new site starts with the scheduler off</b>, and its workers can hold stale database connections until they are restarted.</li>
+    <li><b>The build stops the whole stack</b>, even with <code>--build-only</code>.</li>
+    <li><b>Build cache:</b> <code>apps.json</code> goes in as a BuildKit secret and is not part of the cache key, so the script clears the cache whenever the file changes.</li>
+    <li><b>Over SSH</b>, <code>pgrep -f crm-upgrade.sh</code> matches its own command line. Use <code>ps -eo args | grep "^/bin/bash ./crm[-]upgrade.sh"</code>.</li>
+    <li><b>No fixed IP on planto and meraki.</b> A stop/start changes the IP, and re-applying Terraform points DNS at the new one.</li>
+    <li><b>Campaign email through Gmail SMTP</b> stops once Gmail's sending limit is hit. Large sends need a slower rate or a dedicated sending service.</li>
+  </ul>
+
+  <div class="note">Credentials are never written here. Each box keeps its Administrator and database passwords in a mode-600 file in the home directory.</div>
+</main>
+</body>
+</html>
